@@ -1,0 +1,48 @@
+import functions as f
+import logging as logg
+
+
+def get_data(debug: bool = False) -> str:
+    # Get data from user
+    print("Enter input:")
+
+    data_from_user = ""
+    while True:
+        input_line = input()
+        if input_line.strip().upper() == "END":
+            break
+        elif input_line.strip() != "":
+            data_from_user += input_line + "\n"
+
+    logg.create_folder_file()
+
+    logg.log_to_file(
+        heading="User input",
+        data_changes=[data_from_user],
+    )
+
+    if debug:
+        print("#######\nYOUR INPUT: \n\n")
+        print(data_from_user)
+        print("\n#######\n")
+
+    separator = f.get_separator(data_from_user, debug=debug)
+    data_frame = f.convert_data_to_df(separator, data_from_user, debug=debug)
+    file_type = f.indentify_file_type(data_frame, debug=debug)
+    f.update_header(data=data_frame, file_type=file_type)
+    f.pad_customer_number(data=data_frame)
+    f.convert_distributor(data=data_frame, file_type=file_type)
+    if file_type in ["RHC", "PTOC"]:
+        f.check_valid_error_code(data=data_frame)
+    if file_type == "PTOI":
+        f.check_for_units_in_ptoi(data=data_frame)
+    if file_type == "PTOC":
+        f.set_tax_value_per_isin(data=data_frame)
+        f.update_tax_indetifier(data=data_frame)
+        f.set_account_on_tax_data(data=data_frame)
+        f.move_tax_data(data=data_frame)
+
+    logg.save_new_file(data=data_frame, file_type=file_type)
+
+
+get_data(debug=False)

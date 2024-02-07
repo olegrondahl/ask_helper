@@ -1,0 +1,8 @@
+distributors = {
+    # Forventet i filen : Distributør kode som Wolf forventer
+    "Søderberg og Partners Wealth Management AS": "SP",
+    "Sparebank1 Nord-Norge": "SB1",
+    "Søderberg og Partners": "SP",
+}
+
+tax_key = ["skattedata", "skatedata", "kateopplysninger"]
