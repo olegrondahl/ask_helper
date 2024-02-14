@@ -164,3 +164,4 @@ test_data/
 test_log/
 logg/
 .DS_Store
+env_data.py
