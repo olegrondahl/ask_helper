@@ -5,4 +5,4 @@ distributors = {
     "Søderberg og Partners": "SP",
 }
 
-tax_key = ["skattedata", "skatedata", "kateopplysninger"]
+tax_key = ["skattedata", "skatedata", "kateopplysninger", "Skatteopplysninger (Utbytte angis pr.  ISIN)"]
