@@ -2,7 +2,7 @@ import functions as f
 import logging as logg
 
 
-def get_data(debug: bool = False) -> str:
+def get_data(debug: bool = False):
     # Get data from user
     print("Enter input:")
 
@@ -34,15 +34,23 @@ def get_data(debug: bool = False) -> str:
     f.convert_distributor(data=data_frame, file_type=file_type)
     if file_type in ["RHC", "PTOC"]:
         f.check_valid_error_code(data=data_frame)
+        f.convert_to_numeric(data=data_frame, file_type=file_type)
+
     if file_type == "PTOI":
         f.check_for_units_in_ptoi(data=data_frame)
+
     if file_type == "PTOC":
         f.set_tax_value_per_isin(data=data_frame)
         f.update_tax_indetifier(data=data_frame)
         f.set_account_on_tax_data(data=data_frame)
         f.move_tax_data(data=data_frame)
 
+    if file_type in ["RHC", "PTOC"]:
+        f.group_same_fund(data=data_frame, file_type=file_type)
+
     logg.save_new_file(data=data_frame, file_type=file_type)
+
+    return data_frame
 
 
 get_data(debug=False)

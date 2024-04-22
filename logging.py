@@ -27,7 +27,7 @@ def log_to_file(
                 file.write(f"\n{change_text} {change}")
         if len(data_changes) == 0:
             file.write("\nNo change made")
-        file.write("\n\n")
+        file.write("\n\n\n")
 
 
 def create_folder_file() -> None:
