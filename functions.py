@@ -365,7 +365,7 @@ def move_tax_data(data: pd.DataFrame) -> None:
     )
 
 
-def convert_to_numeric(data: pd.DataFrame, file_type: str) -> None:
+def convert_to_numeric(data: pd.DataFrame, file_type: str) -> pd.DataFrame:
     logg_msg = []
     columns_to_convert = []
     match file_type:
@@ -442,6 +442,7 @@ def group_same_fund(
                 [field for field in current_header if field not in columns_to_sum]
             )[columns_to_sum]
             .sum()
+            .round(8)
             .reset_index()
         )
     else:
@@ -463,6 +464,7 @@ def group_same_fund(
                     **{col: "sum" for col in columns_to_sum},
                 }
             )
+            .round(8)
             .reset_index()
         )
 
@@ -473,3 +475,5 @@ def group_same_fund(
         change_text="Grouped data by ISIN:\n",
         data_changes=[data],
     )
+
+    return data
