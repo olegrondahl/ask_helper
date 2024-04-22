@@ -50,7 +50,5 @@ def get_data(debug: bool = False):
 
     logg.save_new_file(data=data_frame, file_type=file_type)
 
-    return data_frame
-
 
 get_data(debug=False)
