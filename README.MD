@@ -14,8 +14,8 @@ Both of these variables should be sat in `./env_data.py`. Remeber the `/` at the
 
 env_data.py:
 ```py
-download_folder = "/Users/USER/Downloads/"
-log_folder = "/Users/USER/**/ask_helper/test_log/"
+download_folder = "C:/Users/**SIGNATUR**/Downloads/"
+log_folder = "C:/Users/**SIGNATUR**/**/ask_helper/test_log/"
 ```
 
 ## USE
