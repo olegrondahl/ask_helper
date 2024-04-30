@@ -246,20 +246,21 @@ def convert_distributor(data: pd.DataFrame, file_type: str) -> None:
     logg_msg = []
 
     for index, row in data.iterrows():
-        if file_type in ["RHC", "PTOC"]:
-            distributor_key = str(row.iloc[1]).upper()
-            if distributor_key in dist_dict.keys():
-                logg_msg.append(
-                    f"{index +1} [{data.columns[1]}] {row[1]} -> {dist_dict[distributor_key]}"
-                )
-                row[1] = dist_dict[distributor_key]
-        elif file_type in ["RFH", "PTOI"]:
-            distributor_key = str(row[0]).upper()
-            if distributor_key in dist_dict.keys():
-                logg_msg.append(
-                    f"{index +1} [{data.columns[1]}] {row[0]} -> {dist_dict[distributor_key]}"
-                )
-                row[0] = dist_dict[distributor_key]
+        # Fix AVLEVERENDE_PART name
+        distributor_key = str(row.iloc[1]).upper()
+        if distributor_key in dist_dict.keys():
+            logg_msg.append(
+                f"{index +1} [{data.columns[1]}] {row.iloc[1]} -> {dist_dict[distributor_key]}"
+            )
+            row.iloc[1] = dist_dict[distributor_key]
+
+        # Fix MOTTAKENDE_PART_(TILBYDER) name
+        distributor_key = str(row.iloc[0]).upper()
+        if distributor_key in dist_dict.keys():
+            logg_msg.append(
+                f"{index +1} [{data.columns[0]}] {row.iloc[0]} -> {dist_dict[distributor_key]}"
+            )
+            row.iloc[0] = dist_dict[distributor_key]
 
     logg.log_to_file(
         heading="CONVERT DISTRIBUTOR",
