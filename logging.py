@@ -27,7 +27,7 @@ def log_to_file(
                 file.write(f"\n{change_text} {change}")
         if len(data_changes) == 0:
             file.write("\nNo change made")
-        file.write("\n\n")
+        file.write("\n\n\n")
 
 
 def create_folder_file() -> None:
@@ -37,6 +37,6 @@ def create_folder_file() -> None:
 def save_new_file(data: pd.DataFrame, file_type: str) -> None:
     file_name = f"{file_type}_{data.iloc[1,4]}_{temp_folder_name}"
     os.rename(f"{env.log_folder}{temp_folder_name}", f"{env.log_folder}{file_name}")
-    data.to_csv(f"{env.log_folder}{file_name}/{file_name}.csv", sep=";", index=False)
-    data.to_csv(f"{env.download_folder}{file_name}.txt", sep="\t", index=False)
+    data.to_csv(f"{env.log_folder}{file_name}/{file_name}.csv", sep=";", index=False, decimal=',')
+    data.to_csv(f"{env.download_folder}{file_name}.txt", sep="\t", index=False, decimal=',')
     print(f"File saved to {env.download_folder}{file_name}.txt")

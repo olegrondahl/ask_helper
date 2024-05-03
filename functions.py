@@ -246,20 +246,21 @@ def convert_distributor(data: pd.DataFrame, file_type: str) -> None:
     logg_msg = []
 
     for index, row in data.iterrows():
-        if file_type in ["RHC", "PTOC"]:
-            distributor_key = str(row[1]).upper()
-            if distributor_key in dist_dict.keys():
-                logg_msg.append(
-                    f"{index +1} [{data.columns[1]}] {row[1]} -> {dist_dict[distributor_key]}"
-                )
-                row[1] = dist_dict[distributor_key]
-        elif file_type in ["RFH", "PTOI"]:
-            distributor_key = str(row[0]).upper()
-            if distributor_key in dist_dict.keys():
-                logg_msg.append(
-                    f"{index +1} [{data.columns[1]}] {row[0]} -> {dist_dict[distributor_key]}"
-                )
-                row[0] = dist_dict[distributor_key]
+        # Fix AVLEVERENDE_PART name
+        distributor_key = str(row.iloc[1]).upper()
+        if distributor_key in dist_dict.keys():
+            logg_msg.append(
+                f"{index +1} [{data.columns[1]}] {row.iloc[1]} -> {dist_dict[distributor_key]}"
+            )
+            row.iloc[1] = dist_dict[distributor_key]
+
+        # Fix MOTTAKENDE_PART_(TILBYDER) name
+        distributor_key = str(row.iloc[0]).upper()
+        if distributor_key in dist_dict.keys():
+            logg_msg.append(
+                f"{index +1} [{data.columns[0]}] {row.iloc[0]} -> {dist_dict[distributor_key]}"
+            )
+            row.iloc[0] = dist_dict[distributor_key]
 
     logg.log_to_file(
         heading="CONVERT DISTRIBUTOR",
@@ -328,7 +329,9 @@ def set_account_on_tax_data(data: pd.DataFrame) -> None:
             logg_msg.append(
                 f"{index +1} [MTR: {row['MASTERTRANSFERREF_(FULLMAKTSNR)']}] TIL_ASK_KONTO_KUNDE_TILBYDER sat to {data.iloc[index - 1, 6]}"
             )
+
             row["TIL_ASK_KONTO_KUNDE_TILBYDER"] = data.iloc[index - 1, 7]
+
     logg.log_to_file(
         heading="SET ACCOUNT ON TAX DATA",
         change_text="Set account number on row: ",
@@ -361,3 +364,117 @@ def move_tax_data(data: pd.DataFrame) -> None:
         change_text="Moved tax data on row: ",
         data_changes=logg_msg,
     )
+
+
+def convert_to_numeric(data: pd.DataFrame, file_type: str) -> pd.DataFrame:
+    logg_msg = []
+    columns_to_convert = []
+    match file_type:
+        case "RHC":
+            columns_to_convert = ["ANTALL_ANDELER", "VERDI"]
+        case "PTOC":
+            columns_to_convert = [
+                "ANTALL_FLYTTET",
+                "KOSTPRIS_PR_ISIN",
+                "FLYTTET_KOSTPRIS_ASK",
+                "MINSTE_INNSKUDD_HIA",
+                "UBENYTTET_SKJERMING_31.12",
+                "BENYTTET_SKJERMING_HIA",
+            ]
+        case _:
+            return
+
+    count_comma = 0
+    count_period = 0
+
+    for index, row in data.iterrows():
+        for field in columns_to_convert:
+            data[field] = data[field].str.strip().str.replace(" ", "")
+            comma = row[field].find(",")
+            period = row[field].find(".")
+
+            if comma != -1 or period != -1:
+                if comma > period:
+                    count_comma += 1
+                else:
+                    count_period += 1
+
+    sep_to_drop = "." if count_comma > count_period else ","
+
+    for field in columns_to_convert:
+        data[field] = data[field].str.replace(sep_to_drop, "").str.replace(",", ".")
+        data[field] = pd.to_numeric(data[field]).fillna(0)
+        logg_msg.append(
+            f'"{field}" converted to numeric with separator assumed to be: "{sep_to_drop}"'
+        )
+
+    logg.log_to_file(
+        heading="CONVERT TO NUMERIC",
+        change_text="Field:",
+        data_changes=logg_msg,
+    )
+
+
+def group_same_fund(
+    data: pd.DataFrame,
+    file_type: str,
+) -> None:
+    columns_to_sum = []
+    match file_type:
+        case "RHC":
+            columns_to_sum = ["ANTALL_ANDELER", "VERDI"]
+        case "PTOC":
+            columns_to_sum = [
+                "ANTALL_FLYTTET",
+                "KOSTPRIS_PR_ISIN",
+                "FLYTTET_KOSTPRIS_ASK",
+                "MINSTE_INNSKUDD_HIA",
+                "UBENYTTET_SKJERMING_31.12",
+                "BENYTTET_SKJERMING_HIA",
+            ]
+        case _:
+            return
+
+    current_header = data.columns.tolist()
+
+    if file_type == "RHC":
+        data = (
+            data.groupby(
+                [field for field in current_header if field not in columns_to_sum]
+            )[columns_to_sum]
+            .sum()
+            .round(8)
+            .reset_index()
+        )
+    else:
+        data = (
+            data.groupby(
+                [
+                    field
+                    for field in current_header
+                    if field not in columns_to_sum + ["TRANSFER_REF"]
+                ]
+            )
+            .agg(
+                {
+                    **{
+                        col: "first"
+                        for col in current_header
+                        if col in ["TRANSFER_REF"]
+                    },
+                    **{col: "sum" for col in columns_to_sum},
+                }
+            )
+            .round(8)
+            .reset_index()
+        )
+
+    data = data[current_header]
+
+    logg.log_to_file(
+        heading="GROUPPING DATA",
+        change_text="Grouped data by ISIN:\n",
+        data_changes=[data],
+    )
+
+    return data
