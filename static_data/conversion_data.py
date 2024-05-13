@@ -6,4 +6,4 @@ distributors = {
     "kron": "Kron AS"
 }
 
-tax_key = ["skattedata", "skatedata", "kateopplysninger", "Skatteopplysninger (Utbytte angis pr.  ISIN)"]
+tax_key = ["skattedata", "skatedata", "kateopplysninger", "Skatteopplysninger (Utbytte angis pr.  ISIN)", "skatteopplysninger"]
