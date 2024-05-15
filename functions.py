@@ -400,12 +400,13 @@ def convert_to_numeric(data: pd.DataFrame, file_type: str) -> pd.DataFrame:
                     count_period += 1
 
     sep_to_drop = "." if count_comma > count_period else ","
+    sep_used = "," if count_comma > count_period else "."
 
     for field in columns_to_convert:
         data[field] = data[field].str.replace(sep_to_drop, "").str.replace(",", ".")
         data[field] = pd.to_numeric(data[field]).fillna(0)
         logg_msg.append(
-            f'"{field}" converted to numeric with separator assumed to be: "{sep_to_drop}"'
+            f'"{field}" converted to numeric with separator assumed to be: "{sep_used}"'
         )
 
     logg.log_to_file(
