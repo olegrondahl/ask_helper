@@ -24,6 +24,7 @@ def get_data(debug: bool = False):
     if debug:
         print("#######\nYOUR INPUT: \n\n")
         print(data_from_user)
+        # Remove this comment
         print("\n#######\n")
 
     separator = f.get_separator(data_from_user, debug=debug)
