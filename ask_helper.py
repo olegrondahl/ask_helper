@@ -46,7 +46,7 @@ def get_data(debug: bool = False):
 
     if file_type in ["RHC", "PTOC"]:
         f.convert_to_numeric(data=data_frame, file_type=file_type)
-        data_frame = f.group_same_fund(data=data_frame, file_type=file_type)
+        # data_frame = f.group_same_fund(data=data_frame, file_type=file_type)
 
     logg.save_new_file(data=data_frame, file_type=file_type)
 
