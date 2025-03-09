@@ -319,24 +319,57 @@ def update_tax_indetifier(data: pd.DataFrame) -> None:
     )
 
 
-def set_account_on_tax_data(data: pd.DataFrame) -> None:
+def update_cash_identifier(data: pd.DataFrame) -> None:
     logg_msg = []
+
     for index, row in data.iterrows():
-        if (
-            row["VERDIPAPIRNAVN"] == "Skatteopplysninger"
-            and row["TIL_ASK_KONTO_KUNDE_TILBYDER"] == ""
-        ):
+        verdipapirnavn = str(row["VERDIPAPIRNAVN"]).strip()
+        if verdipapirnavn.upper().startswith("CASH") and verdipapirnavn != "Cash":
             logg_msg.append(
-                f"{index +1} [MTR: {row['MASTERTRANSFERREF_(FULLMAKTSNR)']}] TIL_ASK_KONTO_KUNDE_TILBYDER sat to {data.iloc[index - 1, 6]}"
+                f"{index + 1} [MTR: {row['MASTERTRANSFERREF_(FULLMAKTSNR)']}] changed '{row['VERDIPAPIRNAVN']}' -> 'Cash'"
             )
+            data.at[index, "VERDIPAPIRNAVN"] = "Cash"
 
-            row["TIL_ASK_KONTO_KUNDE_TILBYDER"] = data.iloc[index - 1, 7]
+    if logg_msg:
+        logg.log_to_file(
+            heading="UPDATE CASH IDENTIFIER",
+            change_text="Changed cash identifier on row: ",
+            data_changes=logg_msg,
+        )
 
-    logg.log_to_file(
-        heading="SET ACCOUNT ON TAX DATA",
-        change_text="Set account number on row: ",
-        data_changes=logg_msg,
-    )
+
+def set_tax_and_cash_account(data: pd.DataFrame) -> None:
+    logg_msg = []
+    unique_mtrs = data["MASTERTRANSFERREF_(FULLMAKTSNR)"].unique()
+
+    for mtr in unique_mtrs:
+        mtr_rows = data[data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr]
+        unique_accounts = mtr_rows["TIL_ASK_KONTO_KUNDE_TILBYDER"].dropna().unique()
+        unique_accounts = [acc for acc in unique_accounts if acc.strip()]
+
+        if len(unique_accounts) > 1:
+            error_msg = f"Error: More than one account number for {mtr}: {unique_accounts}"
+            logg_msg.append(error_msg)
+            continue
+        
+        elif len(unique_accounts) == 0:
+            logg_msg.append(f"Warning: No account number found for {mtr}. No updates applied.")
+            continue
+        
+        correct_account = unique_accounts[0]
+        mask = (data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr) & \
+               (data["VERDIPAPIRNAVN"].isin(["Cash", "Skatteopplysninger"])) & \
+               (data["TIL_ASK_KONTO_KUNDE_TILBYDER"] == "")
+        data.loc[mask, "TIL_ASK_KONTO_KUNDE_TILBYDER"] = correct_account
+        if mask.any():
+            logg_msg.append(f"Updated account number {correct_account} to the related {mtr}.")
+
+    if logg_msg:
+        logg.log_to_file(
+            heading="UPDATE TAX AND CASH ACCOUNT",
+            change_text="Updated Cash and Tax accounts",
+            data_changes=logg_msg,
+        )
 
 
 def check_valid_error_code(data: pd.DataFrame) -> None:
