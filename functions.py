@@ -1,6 +1,6 @@
 import pandas as pd
 from io import StringIO
-
+from colorama import Fore, Style
 import static_data.headers as headers
 import static_data.conversion_data as conversion_data
 import logging as logg
@@ -348,26 +348,37 @@ def set_tax_and_cash_account(data: pd.DataFrame) -> None:
         unique_accounts = [acc for acc in unique_accounts if acc.strip()]
 
         if len(unique_accounts) > 1:
-            error_msg = f"Error: More than one account number for {mtr}: {unique_accounts}"
+            error_msg = f"Error: More than one account number for {mtr}: {unique_accounts}. Account number for MTR is excluded from the file."
+            print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
             logg_msg.append(error_msg)
             continue
         
         elif len(unique_accounts) == 0:
-            logg_msg.append(f"Warning: No account number found for {mtr}. No updates applied.")
+            error_msg = f"Warning: No account number found for {mtr}. No updates applied for this MTR."
+            print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
+            logg_msg.append(error_msg)
             continue
         
         correct_account = unique_accounts[0]
-        mask = (data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr) & \
-               (data["VERDIPAPIRNAVN"].isin(["Cash", "Skatteopplysninger"])) & \
-               (data["TIL_ASK_KONTO_KUNDE_TILBYDER"] == "")
-        data.loc[mask, "TIL_ASK_KONTO_KUNDE_TILBYDER"] = correct_account
-        if mask.any():
-            logg_msg.append(f"Updated account number {correct_account} to the related {mtr}.")
+        updated_entries = []
+
+        for category in ["Cash", "Skatteopplysninger"]:
+            mask = (data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr) & \
+                   (data["VERDIPAPIRNAVN"] == category) & \
+                   (data["TIL_ASK_KONTO_KUNDE_TILBYDER"] == "")
+            
+            if mask.any():
+                data.loc[mask, "TIL_ASK_KONTO_KUNDE_TILBYDER"] = correct_account
+                updated_entries.append(category)
+
+        if updated_entries:
+            categories_updated = " and ".join(updated_entries)
+            logg_msg.append(f"Updated account number {correct_account} for {categories_updated} in MTR {mtr}.")
 
     if logg_msg:
         logg.log_to_file(
             heading="UPDATE TAX AND CASH ACCOUNT",
-            change_text="Updated Cash and Tax accounts",
+            change_text="Updated Cash and Tax accounts:",
             data_changes=logg_msg,
         )
 
