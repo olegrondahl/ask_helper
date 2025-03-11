@@ -41,7 +41,8 @@ def get_data(debug: bool = False):
     if file_type == "PTOC":
         f.set_tax_value_per_isin(data=data_frame)
         f.update_tax_indetifier(data=data_frame)
-        f.set_account_on_tax_data(data=data_frame)
+        f.update_cash_identifier(data=data_frame)
+        f.set_tax_and_cash_account(data=data_frame)
         f.move_tax_data(data=data_frame)
 
     if file_type in ["RHC", "PTOC"]:
