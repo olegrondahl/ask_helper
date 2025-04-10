@@ -79,29 +79,23 @@ def indentify_file_type(data: pd.DataFrame, debug: bool = False) -> str:
     ncols = len(data.columns)
     file_type_est = {"RFH": 0, "RHC": 0, "PTOI": 0, "PTOC": 0, "NTO": 0}
 
+
     if ncols == 9:
         file_type_est["RFH"] += 10
-        logg.log_to_file(
-            heading="IDENTIFY FILE TYPE",
-            data_changes=["File identified as: RFH"],
-        )
-
-        print("File identified as: RFH")
-        return "RFH"
-    elif ncols <= 12:
-        file_type_est["RFH"] += 2
     elif ncols == 13:
-        file_type_est["RFH"] += 10
+        file_type_est["NTO"] += 5  
     elif ncols == 17:
         file_type_est["RHC"] += 10
         file_type_est["PTOI"] += 10
-    elif ncols <= 20:
-        file_type_est["RHC"] += 2
-        file_type_est["PTOI"] += 2
     elif ncols == 27:
         file_type_est["PTOC"] += 10
-    elif ncols <= 30:
-        file_type_est["PTOC"] += 2
+
+    columns_set = set(data.columns)
+
+    if set(headers.rfh_header) == columns_set:
+        file_type_est["RFH"] += 20  
+    if set(headers.NTO_header) == columns_set:
+        file_type_est["NTO"] += 20  
 
     # check if numeric in col 10 (ANTALL_ANDELER)
 
@@ -201,7 +195,7 @@ def update_header(data: pd.DataFrame, file_type: str) -> pd.DataFrame:
         case "PTOC":
             header = headers.ptoc_header
         case "NTO":
-            header = headers.nto_header
+            header = headers.NTO_header
 
     if len(data.columns) == len(header):
         logg.log_to_file(
@@ -238,6 +232,7 @@ def pad_customer_number(data: pd.DataFrame) -> None:
 
 
 def convert_distributor(data: pd.DataFrame, file_type: str) -> None:
+    
     # Convert dict keys to uppercase
     dist_dict = {
         key.upper(): value for key, value in conversion_data.distributors.items()
@@ -261,7 +256,9 @@ def convert_distributor(data: pd.DataFrame, file_type: str) -> None:
                 f"{index +1} [{data.columns[0]}] {row.iloc[0]} -> {dist_dict[distributor_key]}"
             )
             row.iloc[0] = dist_dict[distributor_key]
-
+    data.iloc[:, 0] = data.iloc[:, 0].str.upper()  
+    data.iloc[:, 1] = data.iloc[:, 1].str.upper()
+    
     logg.log_to_file(
         heading="CONVERT DISTRIBUTOR",
         change_text="Converted distributor on row: ",
@@ -414,12 +411,15 @@ def convert_to_numeric(data: pd.DataFrame, file_type: str) -> pd.DataFrame:
     logg_msg = []
     columns_to_convert = []
     match file_type:
+        case "NTO":
+            columns_to_convert = ["ANTALL_ANDELER"]
         case "RHC":
             columns_to_convert = ["ANTALL_ANDELER", "VERDI"]
         case "PTOC":
             columns_to_convert = [
                 "ANTALL_FLYTTET",
                 "KOSTPRIS_PR_ISIN",
+                "FLYTTET_KONTANTER",
                 "FLYTTET_KOSTPRIS_ASK",
                 "MINSTE_INNSKUDD_HIA",
                 "UBENYTTET_SKJERMING_31.12",
@@ -433,7 +433,7 @@ def convert_to_numeric(data: pd.DataFrame, file_type: str) -> pd.DataFrame:
 
     for index, row in data.iterrows():
         for field in columns_to_convert:
-            data[field] = data[field].str.strip().str.replace(" ", "")
+            data[field] = data[field].str.strip().str.replace(r'\s+', '', regex=True)
             comma = row[field].find(",")
             period = row[field].find(".")
 
@@ -523,3 +523,72 @@ def group_same_fund(
     )
 
     return data
+
+
+
+def add_distributor(data: pd.DataFrame, file_type: str) -> None:
+    logg_msg = []
+    unique_mtrs = data["MASTERTRANSFERREF_(FULLMAKTSNR)"].unique()
+
+    for mtr in unique_mtrs:
+        mtr_rows = data[data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr]
+        unique_mottakende = [mot for mot in mtr_rows.iloc[:, 0].dropna().unique() if mot.strip()]
+        unique_avleverende = [avl for avl in mtr_rows.iloc[:, 1].dropna().unique() if avl.strip()]
+
+        if len(unique_avleverende) > 1 or len(unique_mottakende) > 1:
+            error_msg = f"Error: More than one distributor for {mtr}. No updates applied for this MTR"
+            print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
+            logg_msg.append(error_msg)
+            continue
+        
+        elif not unique_avleverende or not unique_mottakende:
+            error_msg = f"Warning: No distributor found for {mtr}. No updates applied for this MTR."
+            print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
+            logg_msg.append(error_msg)
+            continue
+        
+        col_pairs = [(0, unique_mottakende[0]),(1, unique_avleverende[0])]
+
+        for col_index, correct_value in col_pairs:
+            mask = (data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr) & (data.iloc[:, col_index] == "")
+            if mask.any(): 
+                data.loc[mask, data.columns[col_index]] = correct_value
+                updated_rows = data.index[mask].tolist()
+                for row in updated_rows:
+                    logg_msg.append(f"Row {row+2} [{data.columns[col_index]}] Empty -> {correct_value}")
+
+        logg.log_to_file(
+            heading="ADD DISTRIBUTOR",
+            change_text="Added distributor on row: ",
+            data_changes=logg_msg,
+        )
+def remove_duplicate(data:pd.DataFrame)->pd.DataFrame:
+    logg_msg = []
+    duplicate_rows = data[data.duplicated(keep='first')]
+    data.drop_duplicates(inplace=True)
+    if not duplicate_rows.empty:
+        for _, row in duplicate_rows.iterrows():
+            logg_msg.append(f"Removed duplicate row with KUNDENR: {row['KUNDENR']} and MASTERTRANSFERREF: {row['MASTERTRANSFERREF_(FULLMAKTSNR)']}")
+    
+        logg.log_to_file(
+            heading="REMOVE DUPLICATES",
+            change_text="Removed duplicates:",
+            data_changes=logg_msg,
+        )
+    return data
+
+def remove_negative_cash(data: pd.DataFrame) -> None:
+    logg_msg = []
+    for index, row in data.iterrows():
+        if row["VERDI"].startswith("-") and row["FEILKODE"]=="G":
+            logg_msg.append(
+                f"{index+2}, value removed: [{row['VERDI']}]"
+            )
+            row["VERDI"] = "0"
+
+    logg.log_to_file(
+        heading="REMOVE NEGATIVE CASH",
+        change_text="Removed negative cash on row: ",
+        data_changes=logg_msg,
+    )
+
