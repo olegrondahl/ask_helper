@@ -77,6 +77,9 @@ def convert_data_to_df(separator: str, data: str, debug: bool = False) -> pd.Dat
 def indentify_file_type(data: pd.DataFrame, debug: bool = False) -> str:
     # Check number of columns
     ncols = len(data.columns)
+    if ncols < 6:
+        raise ValueError(f"DataFrame has only {ncols} columns. Not enough to identify file type.")
+    
     file_type_est = {"RFH": 0, "RHC": 0, "PTOI": 0, "PTOC": 0, "NTO": 0}
 
 
@@ -115,13 +118,13 @@ def indentify_file_type(data: pd.DataFrame, debug: bool = False) -> str:
             isin_rfh += 1
 
         if (
-            len(row[data.columns[11]]) == 12
+            ncols > 11 and len(row[data.columns[11]]) == 12
             and str(row[data.columns[11]][:2]).isalpha()
         ):
             isin_ptoi += 1
 
         if (
-            len(row[data.columns[10]]) == 12
+            ncols > 10 and len(row[data.columns[10]]) == 12
             and str(row[data.columns[10]][:2]).isalpha()
         ):
             isin_ptoc += 1
@@ -136,10 +139,10 @@ def indentify_file_type(data: pd.DataFrame, debug: bool = False) -> str:
         ):
             units_rhc += 1
 
-        if len(row[data.columns[7]]) == 3:
+        if ncols > 7 and len(row[data.columns[7]]) == 3:
             currency_rfh += 1
 
-        if len(row[data.columns[12]]) == 3:
+        if ncols > 12 and len(row[data.columns[12]]) == 3:
             currency_ptoi += 1
 
     if currency_rfh >= len(data) * 2 / 3 and currency_rfh >= currency_ptoi:
