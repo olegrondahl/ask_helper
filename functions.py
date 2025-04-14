@@ -526,6 +526,8 @@ def group_same_fund(
 
 def add_distributor(data: pd.DataFrame, file_type: str) -> None:
     logg_msg = []
+    data.iloc[:, 0] = data.iloc[:, 0].astype(str).str.strip()
+    data.iloc[:, 1] = data.iloc[:, 1].astype(str).str.strip()
     unique_mtrs = data["MASTERTRANSFERREF_(FULLMAKTSNR)"].unique()
 
     for mtr in unique_mtrs:
