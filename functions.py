@@ -95,7 +95,7 @@ def indentify_file_type(data: pd.DataFrame, debug: bool = False) -> str:
 
     columns_set = set(data.columns)
 
-    if set(headers.rfh_header) == columns_set:
+    if set(headers.RFH_header) == columns_set:
         file_type_est["RFH"] += 20  
     if set(headers.NTO_header) == columns_set:
         file_type_est["NTO"] += 20  
@@ -190,13 +190,13 @@ def indentify_file_type(data: pd.DataFrame, debug: bool = False) -> str:
 def update_header(data: pd.DataFrame, file_type: str) -> pd.DataFrame:
     match file_type:
         case "RFH":
-            header = headers.rfh_header
+            header = headers.RFH_header
         case "RHC":
-            header = headers.rhc_header
+            header = headers.RHC_header
         case "PTOI":
-            header = headers.ptoi_header
+            header = headers.PTOI_header
         case "PTOC":
-            header = headers.ptoc_header
+            header = headers.PTOC_header
         case "NTO":
             header = headers.NTO_header
 
@@ -234,33 +234,30 @@ def pad_customer_number(data: pd.DataFrame) -> None:
     )
 
 
-def convert_distributor(data: pd.DataFrame, file_type: str) -> None:
-    
-    # Convert dict keys to uppercase
-    dist_dict = {
-        key.upper(): value for key, value in conversion_data.distributors.items()
-    }
-
+def convert_distributor(data: pd.DataFrame, file_type: str) -> None: 
     logg_msg = []
+    if file_type.upper() in {"RFH", "RHC", "PTOI", "PTOC"}:
+        dist_dict = {
+            key.upper(): value for key, value in conversion_data.distributors.items()
+        }
+        cols_conv = [0, 1]
+    elif file_type.upper() == "NTO":
+        dist_dict = {
+            key.upper(): value for key, value in conversion_data.NTO_distributors.items()
+        }
+        cols_conv = [1, 4]
 
     for index, row in data.iterrows():
-        # Fix AVLEVERENDE_PART name
-        distributor_key = str(row.iloc[1]).upper()
-        if distributor_key in dist_dict.keys():
-            logg_msg.append(
-                f"{index +1} [{data.columns[1]}] {row.iloc[1]} -> {dist_dict[distributor_key]}"
-            )
-            row.iloc[1] = dist_dict[distributor_key]
+        for col in cols_conv:
+            orig_val = str(row.iloc[col]).upper()
+            if orig_val in dist_dict:
+                logg_msg.append(
+                    f"{index +1} [{data.columns[col]}] {row.iloc[col]} -> {dist_dict[orig_val]}"
+                )
+                row.iloc[col] = dist_dict[orig_val]
 
-        # Fix MOTTAKENDE_PART_(TILBYDER) name
-        distributor_key = str(row.iloc[0]).upper()
-        if distributor_key in dist_dict.keys():
-            logg_msg.append(
-                f"{index +1} [{data.columns[0]}] {row.iloc[0]} -> {dist_dict[distributor_key]}"
-            )
-            row.iloc[0] = dist_dict[distributor_key]
-    data.iloc[:, 0] = data.iloc[:, 0].str.upper()  
-    data.iloc[:, 1] = data.iloc[:, 1].str.upper()
+    for col in cols_conv:
+        data.iloc[:, col] = data.iloc[:, col].str.upper()
     
     logg.log_to_file(
         heading="CONVERT DISTRIBUTOR",
@@ -321,7 +318,6 @@ def update_tax_indetifier(data: pd.DataFrame) -> None:
 
 def update_cash_identifier(data: pd.DataFrame) -> None:
     logg_msg = []
-
     for index, row in data.iterrows():
         verdipapirnavn = str(row["VERDIPAPIRNAVN"]).strip()
         if verdipapirnavn.upper().startswith("CASH") and verdipapirnavn != "Cash":
@@ -528,24 +524,23 @@ def group_same_fund(
     return data
 
 
-
 def add_distributor(data: pd.DataFrame, file_type: str) -> None:
     logg_msg = []
     unique_mtrs = data["MASTERTRANSFERREF_(FULLMAKTSNR)"].unique()
 
     for mtr in unique_mtrs:
         mtr_rows = data[data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr]
-        unique_mottakende = [mot for mot in mtr_rows.iloc[:, 0].dropna().unique() if mot.strip()]
-        unique_avleverende = [avl for avl in mtr_rows.iloc[:, 1].dropna().unique() if avl.strip()]
+        unique_avleverende = list(set([avl.strip() for avl in mtr_rows.iloc[:, 1].dropna().unique() if avl.strip()]))
+        unique_mottakende = list(set([mot.strip() for mot in mtr_rows.iloc[:, 0].dropna().unique() if mot.strip()]))
 
         if len(unique_avleverende) > 1 or len(unique_mottakende) > 1:
-            error_msg = f"Error: More than one distributor for {mtr}. No updates applied for this MTR"
+            error_msg = f"Error: More than one distributor for {mtr}. Could not fill empty distributor for this MTR"
             print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
             logg_msg.append(error_msg)
             continue
         
         elif not unique_avleverende or not unique_mottakende:
-            error_msg = f"Warning: No distributor found for {mtr}. No updates applied for this MTR."
+            error_msg = f"Warning: No distributor found for {mtr}. Could not fill empty distributor for this MTR."
             print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
             logg_msg.append(error_msg)
             continue
@@ -558,40 +553,49 @@ def add_distributor(data: pd.DataFrame, file_type: str) -> None:
                 data.loc[mask, data.columns[col_index]] = correct_value
                 updated_rows = data.index[mask].tolist()
                 for row in updated_rows:
-                    logg_msg.append(f"Row {row+2} [{data.columns[col_index]}] Empty -> {correct_value}")
+                    logg_msg.append(f"{row+1} [{data.columns[col_index]}] Empty -> {correct_value}")
 
         logg.log_to_file(
             heading="ADD DISTRIBUTOR",
             change_text="Added distributor on row: ",
             data_changes=logg_msg,
         )
-def remove_duplicate(data:pd.DataFrame)->pd.DataFrame:
+
+
+def remove_duplicate(data: pd.DataFrame) -> pd.DataFrame:
     logg_msg = []
     duplicate_rows = data[data.duplicated(keep='first')]
     data.drop_duplicates(inplace=True)
-    if not duplicate_rows.empty:
-        for _, row in duplicate_rows.iterrows():
-            logg_msg.append(f"Removed duplicate row with KUNDENR: {row['KUNDENR']} and MASTERTRANSFERREF: {row['MASTERTRANSFERREF_(FULLMAKTSNR)']}")
     
+    if not duplicate_rows.empty:
+        for index, row in duplicate_rows.iterrows():
+            row_values = ', '.join(str(value) for value in row.values)
+            logg_msg.append(f"{index+1} {row_values}")
+
+        error_msg = f"Warning: Found and removed a duplicate row."
+        print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
+
         logg.log_to_file(
             heading="REMOVE DUPLICATES",
-            change_text="Removed duplicates:",
+            change_text="Removed duplicate on row: ",
             data_changes=logg_msg,
         )
+    
     return data
+
 
 def remove_negative_cash(data: pd.DataFrame) -> None:
     logg_msg = []
     for index, row in data.iterrows():
         if row["VERDI"].startswith("-") and row["FEILKODE"]=="G":
             logg_msg.append(
-                f"{index+2}, value removed: [{row['VERDI']}]"
+                f"{index+1} [{row['VERDI']}] -> 0"
             )
             row["VERDI"] = "0"
 
     logg.log_to_file(
         heading="REMOVE NEGATIVE CASH",
-        change_text="Removed negative cash on row: ",
+        change_text="Changed negative cash on row: ",
         data_changes=logg_msg,
     )
 

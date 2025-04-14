@@ -1,4 +1,4 @@
-rfh_header = [
+RFH_header = [
     "MOTTAKENDE_PART_(TILBYDER)",
     "AVLEVERENDE_PART",
     "KUNDENR",
@@ -10,7 +10,7 @@ rfh_header = [
     "ANTALL_ANDELER",
 ]
 
-rhc_header = [
+RHC_header = [
     "MOTTAKENDE_PART_(TILBYDER)",
     "AVLEVERENDE_PART",
     "KUNDENR",
@@ -30,7 +30,7 @@ rhc_header = [
     "FRA_KONTO_NOMINEE_EIER",
 ]
 
-ptoi_header = [
+PTOI_header = [
     "MOTTAKENDE_TILBYDER",
     "AVLEVERENDE_TILBYDER",
     "KUNDENR",
@@ -50,7 +50,7 @@ ptoi_header = [
     "STOPP_SPAREAVTALE",
 ]
 
-ptoc_header = [
+PTOC_header = [
     "MOTTAKENDE_TILBYDER",
     "AVLEVERENDE_TILBYDER",
     "KUNDENR",

@@ -100,5 +100,10 @@ distributors = {
     "Söderberg og Partners WM": "SP"
 
 }
- 
+NTO_distributors = {
+    "Sparebank 1 SR" : "Sparebank 1 SR-Bank"
+
+
+}
+
 tax_key = ["skattedata", "skatedata", "kateopplysninger", "Skatteopplysninger (Utbytte angis pr.  ISIN)", "skattASK"]
