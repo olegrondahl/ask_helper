@@ -2,13 +2,16 @@ import functions as f
 import logging as logg
 
 
+
+
+
 def get_data(debug: bool = False):
     # Get data from user
     print("Enter input:")
 
     data_from_user = ""
     while True:
-        input_line = input()
+        input_line = input().replace("−", "-")
         if input_line.strip().upper() == "END":
             break
         elif input_line.strip() != "":

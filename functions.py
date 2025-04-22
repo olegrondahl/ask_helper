@@ -532,8 +532,8 @@ def add_distributor(data: pd.DataFrame, file_type: str) -> None:
 
     for mtr in unique_mtrs:
         mtr_rows = data[data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr]
-        unique_avleverende = list(set([avl.strip() for avl in mtr_rows.iloc[:, 1].dropna().unique() if avl.strip()]))
-        unique_mottakende = list(set([mot.strip() for mot in mtr_rows.iloc[:, 0].dropna().unique() if mot.strip()]))
+        unique_avleverende = list(set([avl for avl in mtr_rows.iloc[:, 1].dropna().unique() if avl !=""]))
+        unique_mottakende = list(set([mot for mot in mtr_rows.iloc[:, 0].dropna().unique() if mot !=""]))
 
         if len(unique_avleverende) > 1 or len(unique_mottakende) > 1:
             error_msg = f"Error: More than one distributor for {mtr}. Could not fill empty distributor for this MTR"
@@ -574,7 +574,7 @@ def remove_duplicate(data: pd.DataFrame) -> pd.DataFrame:
             row_values = ', '.join(str(value) for value in row.values)
             logg_msg.append(f"{index+1} {row_values}")
 
-        error_msg = f"Warning: Found and removed a duplicate row."
+        error_msg = f"Warning: Removed a duplicate row, please verify."
         print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
 
         logg.log_to_file(
@@ -589,7 +589,7 @@ def remove_duplicate(data: pd.DataFrame) -> pd.DataFrame:
 def remove_negative_cash(data: pd.DataFrame) -> None:
     logg_msg = []
     for index, row in data.iterrows():
-        if row["VERDI"].startswith("-") and row["FEILKODE"]=="G":
+        if row["VERDI"].startswith("-") and row["FEILKODE"]=="G" and row["VERDIPAPIRNAVN"].upper()=="CASH":
             logg_msg.append(
                 f"{index+1} [{row['VERDI']}] -> 0"
             )
