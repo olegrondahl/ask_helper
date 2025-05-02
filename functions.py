@@ -526,36 +526,32 @@ def group_same_fund(
 
 def add_distributor(data: pd.DataFrame, file_type: str) -> None:
     logg_msg = []
+
     data.iloc[:, 0] = data.iloc[:, 0].astype(str).str.strip()
     data.iloc[:, 1] = data.iloc[:, 1].astype(str).str.strip()
-    unique_mtrs = data["MASTERTRANSFERREF_(FULLMAKTSNR)"].unique()
 
-    for mtr in unique_mtrs:
-        mtr_rows = data[data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr]
-        unique_avleverende = list(set([avl for avl in mtr_rows.iloc[:, 1].dropna().unique() if avl !=""]))
-        unique_mottakende = list(set([mot for mot in mtr_rows.iloc[:, 0].dropna().unique() if mot !=""]))
+    for mtr, mtr_rows in data.groupby("MASTERTRANSFERREF_(FULLMAKTSNR)"):
+        mottakende = set(mtr_rows.iloc[:, 0].dropna()) - {""}
+        avleverende = set(mtr_rows.iloc[:, 1].dropna()) - {""}
 
-        if len(unique_avleverende) > 1 or len(unique_mottakende) > 1:
-            error_msg = f"Error: More than one distributor for {mtr}. Could not fill empty distributor for this MTR"
-            print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
-            logg_msg.append(error_msg)
-            continue
-        
-        elif not unique_avleverende or not unique_mottakende:
-            error_msg = f"Warning: No distributor found for {mtr}. Could not fill empty distributor for this MTR."
-            print(Fore.RED + "!!! - " + error_msg + Style.RESET_ALL)
-            logg_msg.append(error_msg)
-            continue
-        
-        col_pairs = [(0, unique_mottakende[0]),(1, unique_avleverende[0])]
+        if len(mottakende) > 1 or len(avleverende) > 1:
+            msg = f"Error: More than one distributor for {mtr}. Could not fill empty distributor for this MTR"
+            print(Fore.RED + "!!! - " + msg + Style.RESET_ALL)
+            logg_msg.append(msg)
+            raise Exception(msg)
 
-        for col_index, correct_value in col_pairs:
-            mask = (data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr) & (data.iloc[:, col_index] == "")
-            if mask.any(): 
-                data.loc[mask, data.columns[col_index]] = correct_value
-                updated_rows = data.index[mask].tolist()
-                for row in updated_rows:
-                    logg_msg.append(f"{row+1} [{data.columns[col_index]}] Empty -> {correct_value}")
+        if not mottakende or not avleverende:
+            msg = f"Warning: No distributor found for {mtr}. Could not fill empty distributor for this MTR."
+            print(Fore.RED + "!!! - " + msg + Style.RESET_ALL)
+            logg_msg.append(msg)
+            raise Exception(msg)
+
+        for index, value in [(0, next(iter(mottakende))), (1, next(iter(avleverende)))]:
+            mask = (data["MASTERTRANSFERREF_(FULLMAKTSNR)"] == mtr) & (data.iloc[:, index] == "")
+            if mask.any():
+                data.loc[mask, data.columns[index]] = value
+                for row in data.index[mask]:
+                    logg_msg.append(f"{row+1} [{data.columns[index]}] Empty -> {value}")
 
         logg.log_to_file(
             heading="ADD DISTRIBUTOR",
@@ -601,3 +597,49 @@ def remove_negative_cash(data: pd.DataFrame) -> None:
         data_changes=logg_msg,
     )
 
+
+def move_misplaced_accountno(data: pd.DataFrame) -> None:
+    logg_msg=[]
+    mask = (
+        data.apply(lambda r: str(r["VERDIPAPIRNAVN"]).startswith(str(r["MOTTAKENDE_TILBYDER"])), axis=1) &
+        (data["SELG_ALLE_ANDELER"] == "N") &
+        (data["TIL_KONTO_NOMINEE_TILBYDER"].str.strip() == "") & 
+        (data["TIL_ASK_KONTO_KUNDE_TILBYDER"]!="")
+    )
+
+    row = data.index[mask]
+    for index in row:
+        logg_msg.append(
+        f"{index+1} from TIL_ASK_KONTO_KUNDE_TILBYDER -> TIL_KONTO_NOMINEE_TILBYDER"
+        )
+    data.loc[mask, "TIL_KONTO_NOMINEE_TILBYDER"] = data.loc[mask, "TIL_ASK_KONTO_KUNDE_TILBYDER"]
+    data.loc[mask, "TIL_ASK_KONTO_KUNDE_TILBYDER"] = ""
+    
+    logg.log_to_file(
+        heading="MOVED MISPLACED ACCOUNT NUMBER",
+        change_text="Moved misplaced account number on row: ",
+        data_changes=logg_msg,
+    )
+
+def fix_sell_cash(data: pd.DataFrame) ->None:
+    logg_msg=[]
+
+    selg_column = "SELG_ALLE_ANDELER" if "SELG_ALLE_ANDELER" in data.columns else "SELG_ANDELER"
+    
+    for index, row in data.iterrows():
+        if row[selg_column].strip() == "" and row["VERDIPAPIRNAVN"].upper() == "CASH":
+            logg_msg.append(
+                f"{index+1} [{row[selg_column]}] -> N"
+            )
+            row[selg_column] = "N"
+        if row["STOPP_SPAREAVTALE"].strip() =="":
+            logg_msg.append(
+                f"{index+1} [{row["STOPP_SPAREAVTALE"]}] -> J"
+            )
+            row["STOPP_SPAREAVTALE"] = "J"
+
+    logg.log_to_file(
+        heading="FIX J/N ON SELL ALL UNITS AND STOP AGREEMENT",
+        change_text="Added J/N to row : ",
+        data_changes=logg_msg,
+    )

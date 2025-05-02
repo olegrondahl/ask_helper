@@ -44,6 +44,8 @@ def get_data(debug: bool = False):
 
     if file_type == "PTOI":
         f.check_for_units_in_ptoi(data=data_frame)
+        f.move_misplaced_accountno(data=data_frame)
+        f.fix_sell_cash(data=data_frame)
     
     if file_type=="RHC":
         f.remove_negative_cash(data=data_frame)
@@ -54,6 +56,7 @@ def get_data(debug: bool = False):
         f.update_cash_identifier(data=data_frame)
         f.set_tax_and_cash_account(data=data_frame)
         f.move_tax_data(data=data_frame)
+        f.fix_sell_cash(data=data_frame)
 
     if file_type in ["RHC", "PTOC", "NTO"]:
         f.convert_to_numeric(data=data_frame, file_type=file_type)

@@ -37,7 +37,6 @@ distributors = {
     "Pareto" : "ParetoAM",
     "SpareBank 1 Søre Sunnmøre" : "SB1SøreSunnmøre",
     "Sparebanken Møre" : "SBM",
-    "Handelsbanken" : "SHB",
     "Sparebank1 Verdipapirservice" : "SB1VPS",
     "Sparebanken Vest" : "SPV",
     "C WorldWide Asset Management" : "CWW",
@@ -101,7 +100,11 @@ distributors = {
 
 }
 NTO_distributors = {
-    "Sparebank 1 SR" : "Sparebank 1 SR-Bank"
+    "Sparebank 1 SR" : "Sparebank 1 SR-Bank",
+    "NORNEFDS" : "NORNE",
+    "Sparebank 1 Sør-Norge" : "Sparebank 1 SR-Bank",
+    "SPARBSMN" : "Sparebank 1 SMN",
+    "SPARBK_1" : "Sparebank 1 SR-Bank"
 
 
 }
