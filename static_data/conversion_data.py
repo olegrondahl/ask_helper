@@ -96,7 +96,8 @@ distributors = {
     "Heimdal Forvaltning AS" : "HF",
     "Sb1Helg" : "Sparebank 1 Helgeland",
     "Alfred Berg Kapitalforvaltning" : "AB",
-    "Söderberg og Partners WM": "SP"
+    "Söderberg og Partners WM": "SP",
+    "SB1OA" : "SB1SØA"
 
 }
 NTO_distributors = {
@@ -104,7 +105,12 @@ NTO_distributors = {
     "NORNEFDS" : "NORNE",
     "Sparebank 1 Sør-Norge" : "Sparebank 1 SR-Bank",
     "SPARBSMN" : "Sparebank 1 SMN",
-    "SPARBK_1" : "Sparebank 1 SR-Bank"
+    "SPARBK_1" : "Sparebank 1 SR-Bank",
+    "Sparebanken Sogn og Fjordane" : "Sparebank 1 Sogn og Fjordane",
+    "Sparebank 1 Nord Norge" : "Sparebank 1 Nord-Norge",
+    "Sparebank 1 SørNorge" : "Sparebank 1 SR-Bank",
+    "Sparebank1 Østlandet" : "Sparebank 1 Østlandet",
+    "ALLFUNDS BANK SAU LUXEMBOURG B" : "ALLFUNDS"
 
 
 }
